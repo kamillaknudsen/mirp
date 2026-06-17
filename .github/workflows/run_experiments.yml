@@ -26,7 +26,7 @@ jobs:
 
     - name: Run Optimization Scripts
       run: |
-        python run_async.py
+        python src/run_async.py
 
     - name: Commit & Push Compiled Metrics Data Back to Repository
       run: |
