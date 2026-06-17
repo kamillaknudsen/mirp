@@ -32,6 +32,12 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions Automation Framework"
         git config --global user.email "actions@github.com"
-        git add results/
-        git diff-index --quiet HEAD || git commit -m "Automated collection summary update [skip ci]"
-        git push
+        
+        # This checks if the results folder exists before trying to add it
+        if [ -d "results" ]; then
+          git add results/
+          git diff-index --quiet HEAD || git commit -m "Automated collection summary update [skip ci]"
+          git push
+        else
+          echo "No results folder generated yet. Skipping commit step."
+        fi

@@ -1,7 +1,4 @@
 from models import Instance, Solution
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def update_call_pointers(solution: Solution):
