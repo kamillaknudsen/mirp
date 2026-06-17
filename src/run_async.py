@@ -145,7 +145,7 @@ def run_horizon_batch(horizon: int, base_dir: Path, config: dict):
 
 def run():
     # Resolve the repository root relative to where this running script lives
-    repo_root = Path(__file__).resolve().parent
+    repo_root = Path(__file__).resolve().parent.parent
 
     config = {
         'N': 1000, 'q': 3, 'w': 2, 'std_deviation': 1,
