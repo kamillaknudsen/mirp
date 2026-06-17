@@ -1,0 +1,9 @@
+*/__pycache__/*
+.DS_Store
+data/instances/raw/*
+data/results_summary_120_test.csv
+data/results_summary_120.csv
+data/results_summary_180.csv
+data/results_summary_360.csv
+julia_data_extraction.ipynb
+src/main.py

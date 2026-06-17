@@ -1,0 +1,38 @@
+name: MIRP Algorithm Experiment Engine
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  execute-heuristics:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Access Repository Context
+      uses: actions/checkout@v4
+
+    - name: Initialize Runtime Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Fetch Core Libraries
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run Optimization Scripts
+      run: |
+        python run_async.py
+
+    - name: Commit & Push Compiled Metrics Data Back to Repository
+      run: |
+        git config --global user.name "GitHub Actions Automation Framework"
+        git config --global user.email "actions@github.com"
+        git add results/
+        git diff-index --quiet HEAD || git commit -m "Automated collection summary update [skip ci]"
+        git push
