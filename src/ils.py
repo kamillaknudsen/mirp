@@ -1,9 +1,13 @@
 from copy import deepcopy
 import random
 import math
+import time
+import logging
 
 from evaluator import evaluate_solution
 from neighborhoods import *
+
+logger = logging.getLogger(__name__)
 
 
 def rvnd(instance, initial_solution):
@@ -43,7 +47,9 @@ def perturb(instance, solution):
     return perturbed_solution
 
 
-def iterated_local_search(instance, initial_solution, max_iterations, max_non_improving, initial_temp, cooling_rate):
+def iterated_local_search(instance, initial_solution, max_iterations, max_non_improving, initial_temp, cooling_rate, max_runtime):
+    instance_start_time = time.time()
+
     best_solution = rvnd(instance, initial_solution)
     current_solution = deepcopy(best_solution)
 
@@ -51,6 +57,11 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
     non_improving_counter = 0
     
     for iteration in range(max_iterations):
+        elapsed_timee = time.time() - instance_start_time
+        if elapsed_timee > max_runtime:
+            logger.warning("INSTANCE TIMEOUT TRIGGERED!")
+            break
+
         perturbed_solution = perturb(instance, current_solution)
         refined_solution = rvnd(instance, perturbed_solution)
 
