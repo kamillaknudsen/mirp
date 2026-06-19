@@ -1,2 +1,3 @@
 instance_name,periods,bs_total_cost,bs_routing_cost,bs_inventory_penalty,bs_feasible,bs_runtime_sec,bs_calls,ils_total_cost,ils_routing_cost,ils_inventory_penalty,ils_feasible,ils_runtime_sec,ils_calls,total_runtime_sec,total_runtime_formatted,improvement_percent
 LR1_DR02_VC01_V6a,120,529758.09356,34158.09355999997,495600.0,True,11.2108,53,118138.36631999997,33738.36631999998,84400.0,True,3404.9468,57,3416.1576,56m 56.16s,77.70%
+LR1_DR02_VC02_V6a,120,731274.78451,31374.784509999998,699900.0,True,48.5428,73,83882.92733,32982.92733,50900.0,True,5680.1989,69,5728.7418,1h 35m 28.74s,88.53%
