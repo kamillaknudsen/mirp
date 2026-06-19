@@ -2,6 +2,7 @@ import random
 import math
 import time
 import logging
+from copy import deepcopy
 
 from evaluator import evaluate_solution
 from neighborhoods import *
@@ -49,7 +50,7 @@ def perturb(instance, solution):
 def iterated_local_search(instance, initial_solution, max_iterations, max_non_improving, initial_temp, cooling_rate, max_runtime):
     instance_start_time = time.time()
 
-    best_solution = rvnd(instance, initial_solution)
+    best_solution = rvnd(instance, deepcopy(initial_solution))
     current_solution = best_solution
 
     temperature = initial_temp
@@ -71,7 +72,7 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
             current_solution = refined_solution
 
             if current_solution.total_cost < best_solution.total_cost:
-                best_solution = current_solution
+                best_solution = deepcopy(current_solution)
                 non_improving_counter = 0
             else:
                 non_improving_counter += 1
@@ -84,7 +85,7 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
             non_improving_counter += 1
 
         if non_improving_counter > max_non_improving:
-            current_solution = best_solution
+            current_solution = deepcopy(best_solution)
             non_improving_counter = 0
 
         temperature *= cooling_rate

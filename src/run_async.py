@@ -5,10 +5,11 @@ import os
 import logging
 import csv
 from data_loader import load_instance
-from models import Call, Solution
 from initial_calls import create_empty_solution_with_initial_calls
 from beam_search import beam_search
-from ils import iterated_local_search
+from ails import adaptive_iterated_local_search
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def format_runtime(seconds: float) -> str:
 # ----------------------------------------------------
 # SEQUENTIAL WORKER FUNCTION
 # ----------------------------------------------------
-def process_single_instance(file_path: Path, output_csv: Path, config: dict):
+def process_single_instance(file_path: Path, output_csv: Path, config: dict, write_lock):
     try:
         logger.info(f"Processing file: {file_path.name}")
         instance = load_instance(file_path)
@@ -44,7 +45,14 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
 
         # 2. Run Iterated Local Search
         start_time_ils = time.time()
-        final_solution = iterated_local_search(instance, bs_solution, config['max_iterations'], config['max_non_improving'], config['initial_temp'], config['cooling_rate'], remaining_runtime)
+        final_solution = adaptive_iterated_local_search(instance, bs_solution, config['max_iterations'], 
+                                                        config['max_non_improving'], remaining_runtime,
+                                                        config['sigma1'], config['sigma2'],
+                                                        config['sigma3'], config['segment_size'],
+                                                        config['reaction_factor'],  config['gamma'],
+                                                        config['d_beta'], config['target_acceptance_rate'],
+                                                        config['initial_threshold'], config['epsilon'],
+                                                        )
         runtime_ils = time.time() - start_time_ils
         
         total_runtime = runtime_bs + runtime_ils
@@ -57,25 +65,26 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
             round(total_runtime, 4), format_runtime(total_runtime), f"{improvement:.2f}%"
         ]
 
-        # Save locally immediately
-        with open(output_csv, mode='a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(row_payload)
+        with write_lock:
+            with open(output_csv, mode='a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(row_payload)
+                f.flush()
 
-        logger.info(f"SUCCESS | {file_path.name} | Improvement: {improvement:.2f}% | Time: {format_runtime(total_runtime)}")
-        
-        # 3. AUTOMATIC GIT PUSH BLOCK
-        try:
-            logger.info(f"Syncing data row for {file_path.name} to GitHub...")
-            os.system("git config --global user.name 'Kaggle Automation Framework'")
-            os.system("git config --global user.email 'actions@github.com'")
-            os.system("git pull origin main --rebase")
-            os.system(f"git add {output_csv}")
-            os.system(f"git commit -m 'Automated sync: completed {file_path.name} [skip ci]'")
-            os.system("git push origin main")
-            logger.info("GitHub synchronization successful!")
-        except Exception as git_err:
-            logger.error(f"Git push failed but continuing execution queue: {str(git_err)}")
+            logger.info(f"SUCCESS | {file_path.name} | Improvement: {improvement:.2f}% | Time: {format_runtime(total_runtime)}")
+            
+            # 3. AUTOMATIC GIT PUSH BLOCK
+            try:
+                logger.info(f"Syncing data row for {file_path.name} to GitHub...")
+                os.system("git config --global user.name 'Kaggle Automation Framework'")
+                os.system("git config --global user.email 'actions@github.com'")
+                os.system("git pull origin main --rebase")
+                os.system(f"git add {output_csv}")
+                os.system(f"git commit -m 'Automated sync: completed {file_path.name} [skip ci]'")
+                os.system("git push origin main")
+                logger.info("GitHub synchronization successful!")
+            except Exception as git_err:
+                logger.error(f"Git push failed but continuing execution queue: {str(git_err)}")
 
         # Strict memory cleanup to avoid RAM leaks
         del instance, initial_solution, bs_solution, final_solution
@@ -85,7 +94,7 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
         import traceback
         logger.error(f"CRASHED on {file_path.name}: {str(e)}\n{traceback.format_exc()}")
 
-def run_horizon_batch(horizon: int, base_dir: Path, config: dict):
+def run_horizon_batch(horizon: int, base_dir: Path, config: dict, write_lock, max_workers: int): 
     """Executes experiments ONE BY ONE sequentially to safeguard memory usage."""
     logger.info(f"\n==================================================")
     logger.info(f"STARTING BATCH RUN FOR HORIZON: {horizon}")
@@ -94,7 +103,7 @@ def run_horizon_batch(horizon: int, base_dir: Path, config: dict):
     instances_dir = base_dir / "data" / "instances" / str(horizon)
     output_dir = base_dir / "results" / f"horizon_{horizon}"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / "results_summary.csv"
+    output_csv = output_dir / "extension_results_correct.csv"
 
     instance_files = sorted(list(instances_dir.glob('*.json')))
     if not instance_files:
@@ -113,10 +122,19 @@ def run_horizon_batch(horizon: int, base_dir: Path, config: dict):
 
     start_batch_time = time.time()
 
-    # SEQUENTIAL LOOP: Processes files one by one
-    for idx, file_path in enumerate(instance_files, 1):
-        logger.info(f"[{idx}/{len(instance_files)}] Starting processing cycle...")
-        process_single_instance(file_path, output_csv, config)
+    logger.info(f"Spawning pool with up to {max_workers} worker processes...")
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(process_single_instance, file_path, output_csv, config, write_lock): file_path 
+            for file_path in instance_files
+        }
+        
+        for future in as_completed(futures):
+            file_path = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                logger.error(f"Worker generated an unhandled exception for file {file_path.name}: {exc}")
 
     total_batch_time = time.time() - start_batch_time
     logger.info(f"Horizon {horizon} metrics compiled sequentially in: {format_runtime(total_batch_time)}")
@@ -125,15 +143,36 @@ def run():
     repo_root = Path(__file__).resolve().parent.parent
 
     config = {
-        'N': 100, 'q': 3, 'w': 2, 'std_deviation': 1,
-        'max_iterations': 640, 'max_non_improving': 4,
-        'initial_temp': 10000, 'cooling_rate': 0.995,
-        "instance_max_runtime": 90000
+        'N': 1000,
+        'q': 3,
+        'w': 2,
+        'std_deviation': 1,
+        'max_iterations': 640,
+        'max_non_improving': 4,
+        'initial_temp': 10000,
+        'cooling_rate': 0.995,
+        "instance_max_runtime": 43100,
+        'sigma1': 5,
+        'sigma2': 2,
+        'sigma3': 1,
+        'segment_size': 100,
+        'reaction_factor': 0.1,
+        'gamma': 20,
+        'd_beta': 0.3,
+        "target_acceptance_rate": 0.1,
+        "initial_threshold": 0.05,
+        "epsilon": 0.001
     }
+    available_cores = os.cpu_count() or 2
+    logger.info(f"System detected {available_cores} CPU cores available.")
 
-    time_horizons = [360, 180, 120]
+    # Initialize a multiprocessing-safe lock to synchronize disk write actions
+    manager = multiprocessing.Manager()
+    write_lock = manager.Lock()
+
+    time_horizons = [120, 180, 360]
     for horizon in time_horizons:
-        run_horizon_batch(horizon, repo_root, config)
+        run_horizon_batch(horizon, repo_root, config, write_lock, max_workers=available_cores)
 
 if __name__ == "__main__":
     run()

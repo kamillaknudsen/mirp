@@ -104,7 +104,7 @@ def greedy_ranodmized_algorithm(instance, std_deviation, partial_solution=None, 
 
         working_calls.append(Call(port_id=next_port.id, vessel_id=next_vessel.id))
 
-        next_candidate = Solution(calls=working_calls)
+        next_candidate = Solution(calls=working_calls.copy())
         new_evaluated = evaluate_solution(next_candidate, instance)
 
         if not new_evaluated.is_feasible or new_evaluated.violated_horizon:

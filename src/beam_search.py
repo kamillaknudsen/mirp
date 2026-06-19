@@ -15,7 +15,7 @@ def generate_successors(partial_solution, instance, w):
         candidate_vessels = find_earliest_vessels(port, partial_solution.vessel_times, partial_solution.vessel_ports, instance)
 
         for vessel, arrival_time in candidate_vessels:
-            child_node = partial_solution
+            child_node = deepcopy(partial_solution)
             child_node.calls.append(Call(port_id=port.id, vessel_id=vessel.id))
 
             evaluated_child = evaluate_solution(child_node, instance)
@@ -31,7 +31,7 @@ def generate_successors(partial_solution, instance, w):
 def beam_search(instance: Instance, initial_solution: Solution, N: int, q: int, w: int, std_deviation) -> Solution:
     
     initial_solution = evaluate_solution(initial_solution, instance)
-    beam = [(initial_solution, initial_solution.total_cost)]
+    beam = [(deepcopy(initial_solution), initial_solution.total_cost)]
 
     global_best_solutions = []
     time_horizon = instance.metadata.n_periods
