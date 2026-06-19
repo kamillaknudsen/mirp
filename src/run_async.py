@@ -40,7 +40,7 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
 
         # Deduct Beam Search runtime from the total allocated instance budget
         remaining_runtime = config['instance_max_runtime'] - runtime_bs
-        remaining_runtime = max(1.0, remaining_runtime)  # Guardrail
+        remaining_runtime = max(1.0, remaining_runtime)
 
         # 2. Run Iterated Local Search
         start_time_ils = time.time()
@@ -125,7 +125,7 @@ def run():
     repo_root = Path(__file__).resolve().parent.parent
 
     config = {
-        'N': 1000, 'q': 3, 'w': 2, 'std_deviation': 1,
+        'N': 100, 'q': 3, 'w': 2, 'std_deviation': 1,
         'max_iterations': 640, 'max_non_improving': 4,
         'initial_temp': 10000, 'cooling_rate': 0.995,
         "instance_max_runtime": 90000

@@ -1,4 +1,3 @@
-from copy import deepcopy
 import random
 import math
 import time
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def rvnd(instance, initial_solution):
-    current_solution = deepcopy(initial_solution)
+    current_solution = initial_solution
     neighborhoods = [swap, relocate, replace, insert, remove, swap_port]
 
     while True:
@@ -34,7 +33,7 @@ def rvnd(instance, initial_solution):
 
 def perturb(instance, solution):
     neighborhoods = [swap, relocate, replace, insert, remove, swap_port]
-    perturbed_solution = deepcopy(solution)
+    perturbed_solution = solution
 
     for _ in range(2):
         chosen_neighborhood = random.choice(neighborhoods)
@@ -51,7 +50,7 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
     instance_start_time = time.time()
 
     best_solution = rvnd(instance, initial_solution)
-    current_solution = deepcopy(best_solution)
+    current_solution = best_solution
 
     temperature = initial_temp
     non_improving_counter = 0
@@ -72,7 +71,7 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
             current_solution = refined_solution
 
             if current_solution.total_cost < best_solution.total_cost:
-                best_solution = deepcopy(current_solution)
+                best_solution = current_solution
                 non_improving_counter = 0
             else:
                 non_improving_counter += 1
@@ -85,7 +84,7 @@ def iterated_local_search(instance, initial_solution, max_iterations, max_non_im
             non_improving_counter += 1
 
         if non_improving_counter > max_non_improving:
-            current_solution = deepcopy(best_solution)
+            current_solution = best_solution
             non_improving_counter = 0
 
         temperature *= cooling_rate

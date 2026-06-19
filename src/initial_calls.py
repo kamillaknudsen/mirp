@@ -25,7 +25,7 @@ def create_initial_call(vessel, instance):
  
 
 def add_initial_calls_to_solution(instance, solution):
-    solution_copy = deepcopy(solution)
+    solution_copy = solution
 
     initial_calls = []
     for vessel in instance.vessels:

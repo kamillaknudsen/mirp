@@ -15,7 +15,7 @@ def generate_successors(partial_solution, instance, w):
         candidate_vessels = find_earliest_vessels(port, partial_solution.vessel_times, partial_solution.vessel_ports, instance)
 
         for vessel, arrival_time in candidate_vessels:
-            child_node = deepcopy(partial_solution)
+            child_node = partial_solution
             child_node.calls.append(Call(port_id=port.id, vessel_id=vessel.id))
 
             evaluated_child = evaluate_solution(child_node, instance)
