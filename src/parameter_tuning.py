@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 def calc_gap(instance_name, final_cost):
-    bounds_path = "/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/bounds.txt"
+    repo_root = Path(__file__).resolve().parent.parent
+    bounds_path = repo_root / "data" / "bounds.txt"
 
     df_bounds = pd.read_csv(bounds_path, sep=r'\s+', header=None,
                             names=['instance_name', 'periods', 'lower_bound', 'z_ref'])
