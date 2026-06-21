@@ -98,7 +98,7 @@ def tune_parameters_async():
         'w': 2,
         'std_deviation': 1,
         'max_iterations': 640,
-        'max_non_improving': 4,
+        'max_non_improving': 50,
         "instance_max_runtime": 43100,
         'sigma1': 5,
         'sigma2': 2,
