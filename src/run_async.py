@@ -148,9 +148,7 @@ def run():
         'w': 2,
         'std_deviation': 1,
         'max_iterations': 640,
-        'max_non_improving': 4,
-        'initial_temp': 10000,
-        'cooling_rate': 0.995,
+        'max_non_improving': 50,
         "instance_max_runtime": 43100,
         'sigma1': 5,
         'sigma2': 2,
@@ -159,8 +157,8 @@ def run():
         'reaction_factor': 0.1,
         'gamma': 20,
         'd_beta': 0.3,
-        "target_acceptance_rate": 0.1,
-        "initial_threshold": 0.05,
+        "target_acceptance_rate": 0.05,
+        "initial_threshold": 0.10,
         "epsilon": 0.001
     }
     available_cores = os.cpu_count() or 2
