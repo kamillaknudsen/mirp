@@ -157,8 +157,8 @@ def run():
         'reaction_factor': 0.1,
         'gamma': 20,
         'd_beta': 0.3,
-        "target_acceptance_rate": 0.05,
-        "initial_threshold": 0.10,
+        "target_acceptance_rate": 0.15,
+        "initial_threshold": 0.05,
         "epsilon": 0.001
     }
     available_cores = os.cpu_count() or 2
