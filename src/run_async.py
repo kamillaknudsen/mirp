@@ -110,7 +110,22 @@ def run_horizon_batch(horizon: int, base_dir: Path, config: dict, write_lock, ma
         logger.warning(f"Skipping horizon {horizon}: No data models found at {instances_dir}")
         return
 
-    if not output_csv.exists():
+    completed_instances = set()
+    if output_csv.exists():
+        try:
+            with open(output_csv, mode='r', newline='') as f:
+                reader = csv.reader(f)
+                headers = next(reader, None)  # Skip the header row
+                if headers is not None:
+                    for row in reader:
+                        if row:  # Ensure the row isn't blank
+                            # Strip .json if extension exists, or store raw instance name
+                            completed_instances.add(row[0].strip())
+            logger.info(f"Found existing results file. Detected {len(completed_instances)} already completed instances for Horizon {horizon}.")
+        except Exception as read_err:
+            logger.error(f"Could not parse existing CSV file for recovery check (will proceed without skipping): {read_err}")
+    else:
+        # Create file and write headers if it does not exist yet
         csv_headers = [
             "instance_name", "periods",
             "bs_total_cost", "bs_routing_cost", "bs_inventory_penalty", "bs_feasible", "bs_runtime_sec", "bs_calls",
@@ -120,13 +135,26 @@ def run_horizon_batch(horizon: int, base_dir: Path, config: dict, write_lock, ma
         with open(output_csv, mode='w', newline='') as f:
             csv.writer(f).writerow(csv_headers)
 
+    runnable_files = [
+        f for f in instance_files 
+        if f.stem not in completed_instances and f.name not in completed_instances
+    ]
+
+    skipped_count = len(instance_files) - len(runnable_files)
+    if skipped_count > 0:
+        logger.info(f"Filtered execution queue: Skipping {skipped_count} completed tasks. Remaining payload: {len(runnable_files)} jobs.")
+
+    if not runnable_files:
+        logger.info(f"All instances for Horizon {horizon} are already processed. Moving to next horizon batch.")
+        return
+
     start_batch_time = time.time()
 
     logger.info(f"Spawning pool with up to {max_workers} worker processes...")
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(process_single_instance, file_path, output_csv, config, write_lock): file_path 
-            for file_path in instance_files
+            for file_path in runnable_files
         }
         
         for future in as_completed(futures):
