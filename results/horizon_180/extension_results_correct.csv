@@ -1,0 +1,2 @@
+instance_name,periods,bs_total_cost,bs_routing_cost,bs_inventory_penalty,bs_feasible,bs_runtime_sec,bs_calls,ils_total_cost,ils_routing_cost,ils_inventory_penalty,ils_feasible,ils_runtime_sec,ils_calls,total_runtime_sec,total_runtime_formatted,improvement_percent
+LR1_DR02_VC01_V6a,180,822759.95636,53959.956359999946,768800.0,True,99.3425,81,161795.55685999992,52995.556859999924,108800.0,True,17270.6822,87,17370.0247,4h 49m 30.02s,80.34%
