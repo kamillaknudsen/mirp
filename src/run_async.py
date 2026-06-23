@@ -94,78 +94,68 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict, wri
         import traceback
         logger.error(f"CRASHED on {file_path.name}: {str(e)}\n{traceback.format_exc()}")
 
-def run_horizon_batch(horizon: int, base_dir: Path, config: dict, write_lock, max_workers: int): 
-    """Executes experiments ONE BY ONE sequentially to safeguard memory usage."""
-    logger.info(f"\n==================================================")
-    logger.info(f"STARTING BATCH RUN FOR HORIZON: {horizon}")
-    logger.info(f"==================================================")
 
-    instances_dir = base_dir / "data" / "instances" / str(horizon)
-    output_dir = base_dir / "results" / f"horizon_{horizon}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / "extension_results_correct.csv"
+def generate_global_runnable_queue(time_horizons: list, base_dir: Path, base_config: dict) -> list:
+    global_queue = []
+    
+    for horizon in time_horizons:
+        logger.info(f"Scanning target models for horizon batch: {horizon}")
+        instances_dir = base_dir / "data" / "instances" / str(horizon)
+        output_dir = base_dir / "results" / f"horizon_{horizon}"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_csv = output_dir / "extension_results_correct.csv"
 
-    instance_files = sorted(list(instances_dir.glob('*.json')))
-    if not instance_files:
-        logger.warning(f"Skipping horizon {horizon}: No data models found at {instances_dir}")
-        return
+        instance_files = sorted(list(instances_dir.glob('*.json')))
+        if not instance_files:
+            logger.warning(f"Skipping horizon verification loop {horizon}: No valid files at {instances_dir}")
+            continue
 
-    completed_instances = set()
-    if output_csv.exists():
-        try:
-            with open(output_csv, mode='r', newline='') as f:
-                reader = csv.reader(f)
-                headers = next(reader, None)  # Skip the header row
-                if headers is not None:
-                    for row in reader:
-                        if row:  # Ensure the row isn't blank
-                            # Strip .json if extension exists, or store raw instance name
-                            completed_instances.add(row[0].strip())
-            logger.info(f"Found existing results file. Detected {len(completed_instances)} already completed instances for Horizon {horizon}.")
-        except Exception as read_err:
-            logger.error(f"Could not parse existing CSV file for recovery check (will proceed without skipping): {read_err}")
-    else:
-        # Create file and write headers if it does not exist yet
-        csv_headers = [
-            "instance_name", "periods",
-            "bs_total_cost", "bs_routing_cost", "bs_inventory_penalty", "bs_feasible", "bs_runtime_sec", "bs_calls",
-            "ils_total_cost", "ils_routing_cost", "ils_inventory_penalty", "ils_feasible", "ils_runtime_sec", "ils_calls",
-            "total_runtime_sec", "total_runtime_formatted", "improvement_percent"
-        ]
-        with open(output_csv, mode='w', newline='') as f:
-            csv.writer(f).writerow(csv_headers)
-
-    runnable_files = [
-        f for f in instance_files 
-        if f.stem not in completed_instances and f.name not in completed_instances
-    ]
-
-    skipped_count = len(instance_files) - len(runnable_files)
-    if skipped_count > 0:
-        logger.info(f"Filtered execution queue: Skipping {skipped_count} completed tasks. Remaining payload: {len(runnable_files)} jobs.")
-
-    if not runnable_files:
-        logger.info(f"All instances for Horizon {horizon} are already processed. Moving to next horizon batch.")
-        return
-
-    start_batch_time = time.time()
-
-    logger.info(f"Spawning pool with up to {max_workers} worker processes...")
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(process_single_instance, file_path, output_csv, config, write_lock): file_path 
-            for file_path in runnable_files
-        }
-        
-        for future in as_completed(futures):
-            file_path = futures[future]
+        completed_instances = set()
+        if output_csv.exists():
             try:
-                future.result()
-            except Exception as exc:
-                logger.error(f"Worker generated an unhandled exception for file {file_path.name}: {exc}")
+                with open(output_csv, mode='r', newline='') as f:
+                    reader = csv.reader(f)
+                    headers = next(reader, None)  # Skip the header row
+                    if headers is not None:
+                        for row in reader:
+                            if row:  # Ensure the row isn't blank
+                                # Strip .json if extension exists, or store raw instance name
+                                completed_instances.add(row[0].strip())
+                logger.info(f"Found existing results file. Detected {len(completed_instances)} already completed instances for Horizon {horizon}.")
+            except Exception as read_err:
+                logger.error(f"Could not parse existing CSV file for recovery check (will proceed without skipping): {read_err}")
+        else:
+            # Create file and write headers if it does not exist yet
+            csv_headers = [
+                "instance_name", "periods",
+                "bs_total_cost", "bs_routing_cost", "bs_inventory_penalty", "bs_feasible", "bs_runtime_sec", "bs_calls",
+                "ils_total_cost", "ils_routing_cost", "ils_inventory_penalty", "ils_feasible", "ils_runtime_sec", "ils_calls",
+                "total_runtime_sec", "total_runtime_formatted", "improvement_percent"
+            ]
+            with open(output_csv, mode='w', newline='') as f:
+                csv.writer(f).writerow(csv_headers)
+    
+        runnable_for_horizon = [
+                f for f in instance_files 
+                if f.stem not in completed_instances and f.name not in completed_instances
+            ]
+        if runnable_for_horizon:
+                # Localize dictionary configurations for this block elements
+                horizon_specific_config = base_config.copy()
+                horizon_specific_config['current_horizon'] = horizon
+        
+                if horizon == 360:
+                    horizon_specific_config['N'] = 100
+    
+                for f_path in runnable_for_horizon:
+                    global_queue.append({
+                        'file_path': f_path,
+                        'output_csv': output_csv,
+                        'config': horizon_specific_config
+                    })
 
-    total_batch_time = time.time() - start_batch_time
-    logger.info(f"Horizon {horizon} metrics compiled sequentially in: {format_runtime(total_batch_time)}")
+    return global_queue
+
 
 def run():
     repo_root = Path(__file__).resolve().parent.parent
@@ -177,7 +167,7 @@ def run():
         'std_deviation': 1,
         'max_iterations': 640,
         'max_non_improving': 50,
-        "instance_max_runtime": 43100,
+        "instance_max_runtime": 43000,
         'sigma1': 5,
         'sigma2': 2,
         'sigma3': 1,
@@ -197,8 +187,38 @@ def run():
     write_lock = manager.Lock()
 
     time_horizons = [120, 180, 360]
-    for horizon in time_horizons:
-        run_horizon_batch(horizon, repo_root, config, write_lock, max_workers=available_cores)
+    
+    logger.info("Analyzing directories to configure global streaming queue...")
+    master_queue = generate_global_runnable_queue(time_horizons, repo_root, config)
+    if not master_queue:
+        logger.info("All instances across horizons 120, 180, and 360 are completely processed!")
+        return
+
+    logger.info(f"Master batch tracking initialized. Total pending payload stream: {len(master_queue)} instances.")
+    start_execution_time = time.time()
+
+    # Stream everything dynamically through the thread/process engine
+    logger.info(f"Spawning execution pool running up to {available_cores} items concurrently...")
+    with ProcessPoolExecutor(max_workers=available_cores) as executor:
+        futures = {
+            executor.submit(
+                process_single_instance, 
+                job['file_path'], 
+                job['output_csv'], 
+                job['config'], 
+                write_lock
+            ): job['file_path'] for job in master_queue
+        }
+        
+        for future in as_completed(futures):
+            file_path = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                logger.error(f"Unhandled runtime thread breakdown on instance {file_path.name}: {exc}")
+
+    total_execution_time = time.time() - start_execution_time
+    logger.info(f"All global operations executed successfully in: {format_runtime(total_execution_time)}")
 
 if __name__ == "__main__":
     run()
