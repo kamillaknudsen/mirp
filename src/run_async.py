@@ -14,6 +14,8 @@ import multiprocessing
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+RUN_PARALLEL = False
+
 def format_runtime(seconds: float) -> str:
     if seconds < 60:
         return f"{seconds:.4f}s"
@@ -24,6 +26,11 @@ def format_runtime(seconds: float) -> str:
     hours = int(minutes // 60)
     rem_minutes = minutes % 60
     return f"{hours}h {rem_minutes}m {rem_seconds:.2f}s"
+
+class DummyLock:
+    """Pass-through lock context manager for sequential single-core runs."""
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc_val, exc_tb): pass
 
 # ----------------------------------------------------
 # SEQUENTIAL WORKER FUNCTION
@@ -179,44 +186,47 @@ def run():
         "initial_threshold": 0.05,
         "epsilon": 0.001
     }
-    #available_cores = os.cpu_count() or 2
-    available_cores = 1
-    logger.info(f"System detected {available_cores} CPU cores available.")
-
-    # Initialize a multiprocessing-safe lock to synchronize disk write actions
-    manager = multiprocessing.Manager()
-    write_lock = manager.Lock()
 
     time_horizons = [120, 180, 360]
     
     logger.info("Analyzing directories to configure global streaming queue...")
     master_queue = generate_global_runnable_queue(time_horizons, repo_root, config)
     if not master_queue:
-        logger.info("All instances across horizons 120, 180, and 360 are completely processed!")
+        logger.info("All instances across horizons are completely processed!")
         return
 
     logger.info(f"Master batch tracking initialized. Total pending payload stream: {len(master_queue)} instances.")
     start_execution_time = time.time()
 
-    # Stream everything dynamically through the thread/process engine
-    logger.info(f"Spawning execution pool running up to {available_cores} items concurrently...")
-    with ProcessPoolExecutor(max_workers=available_cores) as executor:
-        futures = {
-            executor.submit(
-                process_single_instance, 
-                job['file_path'], 
-                job['output_csv'], 
-                job['config'], 
-                write_lock
-            ): job['file_path'] for job in master_queue
-        }
+    if RUN_PARALLEL:
+        # --- PARALLEL MAX CPU MODE ---
+        available_cores = os.cpu_count() or 2
+        logger.info(f"LAUNCHING IN PARALLEL MODE across {available_cores} CPU Cores.")
         
-        for future in as_completed(futures):
-            file_path = futures[future]
-            try:
-                future.result()
-            except Exception as exc:
-                logger.error(f"Unhandled runtime thread breakdown on instance {file_path.name}: {exc}")
+        manager = multiprocessing.Manager()
+        write_lock = manager.Lock()
+        
+        with ProcessPoolExecutor(max_workers=available_cores) as executor:
+            futures = {
+                executor.submit(
+                    process_single_instance, job['file_path'], job['output_csv'], job['config'], write_lock
+                ): job['file_path'] for job in master_queue
+            }
+            for future in as_completed(futures):
+                file_path = futures[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    logger.error(f"Unhandled parallel crash on instance {file_path.name}: {exc}")
+    else:
+        # --- SEQUENTIAL STABLE MODE ---
+        logger.info("LAUNCHING IN NATIVE SEQUENTIAL MODE (Safe mode for single/heavy jobs).")
+        write_lock = DummyLock()
+        
+        for idx, job in enumerate(master_queue, 1):
+            logger.info(f"--- [Job {idx}/{len(master_queue)}] Starting Processing Stream ---")
+            process_single_instance(job['file_path'], job['output_csv'], job['config'], write_lock)
+            time.sleep(0.5)
 
     total_execution_time = time.time() - start_execution_time
     logger.info(f"All global operations executed successfully in: {format_runtime(total_execution_time)}")
