@@ -180,7 +180,7 @@ def run():
         "epsilon": 0.001
     }
     #available_cores = os.cpu_count() or 2
-    available_cores = 2
+    available_cores = 1
     logger.info(f"System detected {available_cores} CPU cores available.")
 
     # Initialize a multiprocessing-safe lock to synchronize disk write actions
