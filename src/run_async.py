@@ -14,7 +14,7 @@ import multiprocessing
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-RUN_PARALLEL = False
+RUN_PARALLEL = True
 
 def format_runtime(seconds: float) -> str:
     if seconds < 60:
@@ -187,7 +187,7 @@ def run():
         "epsilon": 0.001
     }
 
-    time_horizons = [120, 180, 360]
+    time_horizons = [180, 120]
     
     logger.info("Analyzing directories to configure global streaming queue...")
     master_queue = generate_global_runnable_queue(time_horizons, repo_root, config)
