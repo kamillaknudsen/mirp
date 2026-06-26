@@ -174,7 +174,7 @@ def run():
         'std_deviation': 1,
         'max_iterations': 640,
         'max_non_improving': 50,
-        "instance_max_runtime": 43000,
+        "instance_max_runtime": 42900,
         'sigma1': 5,
         'sigma2': 2,
         'sigma3': 1,
