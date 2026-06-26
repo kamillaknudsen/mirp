@@ -14,7 +14,7 @@ import multiprocessing
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-RUN_PARALLEL = True
+RUN_PARALLEL = False
 
 def format_runtime(seconds: float) -> str:
     if seconds < 60:
