@@ -173,7 +173,7 @@ def run():
         "epsilon": 0.001
     }
 
-    time_horizons = [180, 120, 360]
+    time_horizons = [360, 180, 120]
     for horizon in time_horizons:
         run_horizon_batch(horizon, repo_root, config)
 
