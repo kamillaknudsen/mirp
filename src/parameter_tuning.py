@@ -61,9 +61,8 @@ def run_single_instance(instance_name, file_path, params, combo_idx, tuned_facto
         gap_percent = calc_gap(instance_name, final_solution.total_cost)
 
         row_payload = [combo_idx, tuned_factor, instance_name, final_solution.total_cost,
-                       gap_percent, total_runtime,  params['d_beta'],
-                       params['target_acceptance_rate'], params['initial_threshold'],
-                       params['reaction_factor']]
+                       gap_percent, total_runtime, params['reaction_factor'], params['d_beta'],
+                       params['target_acceptance_rate'], params['initial_threshold']]
 
         with write_lock:
             with open(output_csv, mode='a', newline='') as f:
