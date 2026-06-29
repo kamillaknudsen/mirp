@@ -158,7 +158,7 @@ def run():
         'max_non_improving': 4,
         'initial_temp': 10000,
         'cooling_rate': 0.995,
-        "instance_max_runtime": 42000,
+        "instance_max_runtime": 21600,
         'sigma1': 5,
         'sigma2': 2,
         'sigma3': 1,
