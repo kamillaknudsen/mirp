@@ -150,11 +150,11 @@ def run():
     repo_root = Path(__file__).resolve().parent.parent
 
     config = {
-        'N': 1000, 
-        'q': 3, 
-        'w': 2, 
+        'N': 100,
+        'q': 3,
+        'w': 2,
         'std_deviation': 1,
-        'max_iterations': 640, 
+        'max_iterations': 640,
         'max_non_improving': 4,
         'initial_temp': 10000,
         'cooling_rate': 0.995,
