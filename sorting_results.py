@@ -61,14 +61,20 @@ def process_and_minimize_results(results_csv_path: str, bounds_path: str, final_
 
 # --- Execution Entry Point ---
 if __name__ == "__main__":
-    # Change these filenames to match your local setup
-    # REPLICATION
-    replication_raw_csv = "/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/results_all_together.csv"
-    bounds = "/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/bounds.txt"
-    repli_clean_csv = "/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/final_best_sorted_results.csv"
+    BASE_DIR = Path(__file__).resolve().parent
+
+    data_dir = BASE_DIR / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    bounds = data_dir / "bounds.txt"
+
+    # REPLICATION PATHS
+    replication_raw_csv = data_dir / "results_all_together.csv"
+    repli_clean_csv = data_dir / "final_best_sorted_results.csv"
     process_and_minimize_results(replication_raw_csv, bounds, repli_clean_csv)
  
     #EXTENSION
-    extension_raw_csv = "/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/results_all_together_extension.csv"
-    extension_output = '/Users/kamillaknudsen-bielaszewska/Documents/EUR/Thesis/code_thesis/data/final_best_sorted_extension_results.csv'
+    # EXTENSION PATHS
+    extension_raw_csv = data_dir / "results_all_together_extension.csv"
+    extension_output = data_dir / "final_best_sorted_extension_results.csv"
     process_and_minimize_results(extension_raw_csv, bounds, extension_output)
