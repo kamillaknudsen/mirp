@@ -1,8 +1,12 @@
 from copy import deepcopy
+import time
+import logging
 from models import Instance, Solution, Call
 from greedy_algorithm import find_next_violating_ports, find_earliest_vessels, greedy_ranodmized_algorithm, evaluate_successor_with_median
 from evaluator import evaluate_solution
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def generate_successors(partial_solution, instance, w):
     candidate_children = []
@@ -28,18 +32,27 @@ def generate_successors(partial_solution, instance, w):
     return successors
 
 
-def beam_search(instance: Instance, initial_solution: Solution, N: int, q: int, w: int, std_deviation) -> Solution:
-    
+def beam_search(instance: Instance, initial_solution: Solution, N: int, q: int, w: int, std_deviation, max_time) -> Solution:
+    start_time = time.time()
+
     initial_solution = evaluate_solution(initial_solution, instance)
     beam = [(deepcopy(initial_solution), initial_solution.total_cost)]
 
     global_best_solutions = []
     time_horizon = instance.metadata.n_periods
 
-    while True: 
+    while True:
+        if (time.time() - start_time) > max_time:
+            logging.warning("TIMEOUT TRIGGERED DURING BEAM SEARCH EXPANSION")
+            break
+
         successor_pool = []
         scores = set()
         for partial_solution, _ in beam:
+            if (time.time() - start_time) > max_time:
+                logging.warning("TIMEOUT TRIGGERED INSIDE BEAM EXPANSION")
+                break
+
             if all(t >= time_horizon for t in partial_solution.vessel_times.values()):
                 continue
 
@@ -65,6 +78,9 @@ def beam_search(instance: Instance, initial_solution: Solution, N: int, q: int, 
         beam = successor_pool[:N]
     
     for final_partial, _ in beam:
+        if (time.time() - start_time) > max_time:
+            logging.warning("TIMEOUT TRIGGERED DURING BEAM SEARCH FINAL GRA")
+            break
         final_complete = greedy_ranodmized_algorithm(instance, std_deviation, final_partial, is_randomized=False)
         if final_complete.is_feasible and not final_complete.violated_horizon:
             global_best_solutions.append(final_complete)
