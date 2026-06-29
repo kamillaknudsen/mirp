@@ -34,7 +34,7 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
 
         # 1. Run Beam Search
         start_time_bs = time.time()
-        bs_solution = beam_search(instance, initial_solution, config['N'], config['q'], config['w'], config['std_deviation'])
+        bs_solution = beam_search(instance, initial_solution, config['N'], config['q'], config['w'], config['std_deviation'], config['instance_max_runtime'])
         runtime_bs = time.time() - start_time_bs
 
         # Deduct Beam Search runtime from the total allocated instance budget
