@@ -34,7 +34,7 @@ def process_single_instance(file_path: Path, output_csv: Path, config: dict):
 
         # 1. Run Beam Search
         start_time_bs = time.time()
-        bs_solution = beam_search(instance, initial_solution, config['N'], config['q'], config['w'], config['std_deviation'])
+        bs_solution = beam_search(instance, initial_solution, config['N'], config['q'], config['w'], config['std_deviation'], config['instance_max_runtime'])
         runtime_bs = time.time() - start_time_bs
 
         # Deduct Beam Search runtime from the total allocated instance budget
@@ -152,7 +152,7 @@ def run():
     repo_root = Path(__file__).resolve().parent.parent
 
     config = {
-        'N': 1000, 
+        'N': 100, 
         'q': 3, 
         'w': 2, 
         'std_deviation': 1,
@@ -160,7 +160,7 @@ def run():
         'max_non_improving': 4,
         'initial_temp': 10000,
         'cooling_rate': 0.995,
-        "instance_max_runtime": 42900,
+        "instance_max_runtime": 20000,
         'sigma1': 5,
         'sigma2': 2,
         'sigma3': 1,
